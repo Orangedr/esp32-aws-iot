@@ -6,57 +6,63 @@
 #include <ArduinoJson.h>
 // #include "WiFi.h"
 #include <Wire.h>
-// #include <Adafruit_Sensor.h>
-// #include <Adafruit_BME280.h>
-// #include <SDS011.h>
 
 #define AWS_IOT_SUBSCRIBE_TOPIC "esp32/sub"
 #define PUBLISH_MEASURMENT_TOPIC "sensor/measurment"
 #define PUBLISH_MESSAGE_TOPIC "sensor/message"
-// #define SEALEVELPRESSURE_HPA (1013.25)
+
 
 WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(256);
-// Adafruit_BME280 bme;
-// SDS011 sds;
-HardwareSerial port(2);
+
+
+#define Sensor1 12
+#define Sensor2 32
+
+volatile int Count;
+volatile double Vib;
+volatile int Sensitivity;
+// volatile int mqtt_read1;
+// volatile double mqtt_read2;
+
+ezButton Switch1(Sensor1);
+
 
 void messageHandler(String &topic, String &payload)
 {
   Serial.println("incoming: " + topic + " - " + payload);
 }
 
-void publishJson(const char *topic, StaticJsonDocument<200> doc)
-{
-  char jsonBuffer[512];
-  serializeJson(doc, jsonBuffer);
+// void publishJson(const char *topic, StaticJsonDocument<200> doc)
+// {
+//   char jsonBuffer[512];
+//   serializeJson(doc, jsonBuffer);
+//   bool success = client.publish(topic, jsonBuffer);
+//   if (!success)
+//   {
+//     Serial.print("Publish failed: ");
+//     Serial.println(success);
+//   }
+// }
 
-  bool success = client.publish(topic, jsonBuffer);
-  if (!success)
-  {
-    Serial.print("Publish failed: ");
-    Serial.println(success);
-  }
-}
+// void publishMessage(String type, String message)
+// {
+//   StaticJsonDocument<200> doc;
+//   doc["time"] = millis();
+//   doc["type"] = type;
+//   doc["message"] = message;
+//   publishJson(PUBLISH_MESSAGE_TOPIC, doc);
+// }
 
-void publishMessage(String type, String message)
-{
-  StaticJsonDocument<200> doc;
-  doc["time"] = millis();
-  doc["type"] = type;
-  doc["message"] = message;
-  publishJson(PUBLISH_MESSAGE_TOPIC, doc);
-}
-
-void configureWill()
-{
-  StaticJsonDocument<200> doc;
-  doc["type"] = "will";
-  doc["message"] = "Thing disconnected";
-  char jsonBuffer[512];
-  serializeJson(doc, jsonBuffer);
-  client.setWill(PUBLISH_MESSAGE_TOPIC, jsonBuffer, false, 0);
-}
+// void configureWill()
+// {
+//   StaticJsonDocument<200> doc;
+//   doc["type"] = "will";
+//   doc["message"] = "Thing disconnected";
+//   char jsonBuffer[512];
+//   serializeJson(doc, jsonBuffer);
+//   client.setWill(PUBLISH_MESSAGE_TOPIC, jsonBuffer, false, 0);
+// }
 
 void connectAWS()
 {
@@ -68,10 +74,11 @@ void connectAWS()
   // Connect to the MQTT broker on the AWS endpoint we defined earlier
   client.begin(AWS_IOT_ENDPOINT, 8883, net);
 
-  configureWill();
+  client.onMessage(messageHandler);
 
-  Serial.print("Connecting to AWS IOT as thing ");
-  Serial.println(THINGNAME);
+  // configureWill();
+  Serial.print("Connecting to AWS IOT");
+  // Serial.println(THINGNAME);
 
   while (!client.connect(THINGNAME))
   {
@@ -101,7 +108,7 @@ void connectAWS()
   }
 
   Serial.println("AWS IoT Connected!");
-  publishMessage("info", "Connected to AWS IoT");
+  // publishMessage("info", "Connected to AWS IoT");
 }
 
 void connectWifi()
@@ -139,21 +146,24 @@ void connectWifi()
 
 void publishMeasurment()
 {
+  
+  Switch1.loop();
+  if (Switch1.isPressed()) {
+    Serial.println("The button is pressed");
+    Count++;
+    }
+  Vib = analogRead(Sensor2) * 3;
+
   StaticJsonDocument<200> doc;
   doc["time"] = millis();
 
-  // float p10, p25;
-  // int err = sds.read(&p25, &p10);
-  // if (!err)
-  // {
-  //   doc["sds_p10"] = p10;
-  //   doc["sds_p25"] = p25;
-  // }
-  // else
-  // {
-  //   doc["sds_err"] = err;
-  // }
-  publishJson(PUBLISH_MEASURMENT_TOPIC, doc);
+  doc["production"]= Count;
+  doc["vibration"] = Vib;
+
+  char jsonBuffer[512];
+  serializeJson(doc, jsonBuffer);
+  client.publish(PUBLISH_MEASURMENT_TOPIC, jsonBuffer);
+  Serial.println(jsonBuffer);
 }
 
 // void connectSds()
@@ -163,7 +173,9 @@ void publishMeasurment()
 
 void setup()
 {
-  Serial.begin(115200);
+  Serial.begin(9600);
+  Switch1.setDebounceTime(60);
+  Count = 0;
   connectWifi();
   connectAWS();
   // connectBme();
