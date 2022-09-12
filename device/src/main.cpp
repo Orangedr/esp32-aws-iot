@@ -1,22 +1,24 @@
 #include "secrets.h"
 #include <WiFiClientSecure.h>
 #include <MQTTClient.h>
+#include <ezButton.h>
+
 #include <ArduinoJson.h>
-#include "WiFi.h"
+// #include "WiFi.h"
 #include <Wire.h>
-#include <Adafruit_Sensor.h>
-#include <Adafruit_BME280.h>
-#include <SDS011.h>
+// #include <Adafruit_Sensor.h>
+// #include <Adafruit_BME280.h>
+// #include <SDS011.h>
 
 #define AWS_IOT_SUBSCRIBE_TOPIC "esp32/sub"
 #define PUBLISH_MEASURMENT_TOPIC "sensor/measurment"
 #define PUBLISH_MESSAGE_TOPIC "sensor/message"
-#define SEALEVELPRESSURE_HPA (1013.25)
+// #define SEALEVELPRESSURE_HPA (1013.25)
 
 WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(256);
-Adafruit_BME280 bme;
-SDS011 sds;
+// Adafruit_BME280 bme;
+// SDS011 sds;
 HardwareSerial port(2);
 
 void messageHandler(String &topic, String &payload)
@@ -120,57 +122,52 @@ void connectWifi()
   Serial.println("Connected to Wi-Fi!");
 }
 
-void connectBme()
-{
-  bool status = bme.begin(0x76);
-  Serial.println("Connecting to BME280...");
-  if (!status)
-  {
-    publishMessage("error", "Could not find a valid BME280 sensor, check wiring!");
-    Serial.println("Could not find a valid BME280 sensor, check wiring!");
-    while (1)
-      ;
-  }
-  publishMessage("info", "Connected to BME280");
-  Serial.println("Connected to BME280");
-}
+// void connectBme()
+// {
+//   bool status = bme.begin(0x76);
+//   Serial.println("Connecting to BME280...");
+//   if (!status)
+//   {
+//     publishMessage("error", "Could not find a valid BME280 sensor, check wiring!");
+//     Serial.println("Could not find a valid BME280 sensor, check wiring!");
+//     while (1)
+//       ;
+//   }
+//   publishMessage("info", "Connected to BME280");
+//   Serial.println("Connected to BME280");
+// }
 
 void publishMeasurment()
 {
   StaticJsonDocument<200> doc;
   doc["time"] = millis();
-  doc["temperature"] = bme.readTemperature();
-  doc["humidity"] = bme.readHumidity();
-  doc["pressure"] = bme.readPressure() / 100.0F;
-  doc["altitude"] = bme.readAltitude(SEALEVELPRESSURE_HPA);
-  doc["hall"] = hallRead();
 
-  float p10, p25;
-  int err = sds.read(&p25, &p10);
-  if (!err)
-  {
-    doc["sds_p10"] = p10;
-    doc["sds_p25"] = p25;
-  }
-  else
-  {
-    doc["sds_err"] = err;
-  }
+  // float p10, p25;
+  // int err = sds.read(&p25, &p10);
+  // if (!err)
+  // {
+  //   doc["sds_p10"] = p10;
+  //   doc["sds_p25"] = p25;
+  // }
+  // else
+  // {
+  //   doc["sds_err"] = err;
+  // }
   publishJson(PUBLISH_MEASURMENT_TOPIC, doc);
 }
 
-void connectSds()
-{
-  sds.begin(&port);
-}
+// void connectSds()
+// {
+//   sds.begin(&port);
+// }
 
 void setup()
 {
   Serial.begin(115200);
   connectWifi();
   connectAWS();
-  connectBme();
-  connectSds();
+  // connectBme();
+  // connectSds();
 }
 
 void loop()
