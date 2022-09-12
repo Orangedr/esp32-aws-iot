@@ -16,8 +16,8 @@ WiFiClientSecure net = WiFiClientSecure();
 MQTTClient client = MQTTClient(256);
 
 
-#define Sensor1 12
-#define Sensor2 32
+#define Sensor1 20
+#define Sensor2 19
 
 volatile int Count;
 volatile double Vib;
